@@ -4,6 +4,8 @@ import time
 import getpass
 import sys
 import argparse
+import datetime
+from pytz import timezone
 
 
 class AutoBuyer:
@@ -109,27 +111,98 @@ class AutoBuyer:
         return response.json().get('available_balance')
 
 
-    def make_orders(self):
+    def get_available_loans(self):
+        response = requests.get(
+            'https://app.harmoney.com/api/v1/investor/marketplace/loans',
+            headers={
+                'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Referer': 'https://www.harmoney.co.nz/lender/',
+                'Origin': 'https://www.harmoney.co.nz',
+                'Connection': 'keep-alive',
+                'Cookie': self.cookie,
+            },
+        )
+
+        if (response.status_code != 200):
+            print("Failed to get available loans")
+            return {}
+
+        return response.json().get('items')
+
+
+    def have_not_invested_in_loan(self, loan):
+        return loan.get('already_invested_amount') == 0
+
+
+    def check_loan_grade(self, grade):
+        acceptable_grades = ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3"]
+        return grade in acceptable_grades
+
+
+    def loan_is_acceptable(self, loan):
+        grade = loan.get('grade')
+        note_value = loan.get('note_value')
+
+        if not self.check_loan_grade(grade):
+            return False
+
+        if note_value != 25:
+            print ("Unexpected note value: {}".format(note_value))
+            return False
+
+        return True
+
+
+    def buy_loan(self, loan):
         pass
+
+
+    def make_orders(self):
+        loans = self.get_available_loans()
+        for loan in loans:
+            if (self.have_not_invested_in_loan(loan) and self.loan_is_acceptable(loan)):
+                self.buy_loan(loan)
+
+
+    def sleep_until_tomorrow(self):
+        current_time = datetime.datetime.now(timezone('Pacific/Auckland'))
+        eight_am = datetime.time(8, 0, 0, 0)
+
+        if (current_time.time() > eight_am):
+            eight_am_tomorrow = current_time + datetime.timedelta(days=1)
+        else:
+            eight_am_tomorrow = current_time
+
+        eight_am_tomorrow = eight_am_tomorrow.replace(hour=8, minute=0)
+        diff = (eight_am_tomorrow - current_time).total_seconds()
+        time.sleep(abs(diff))
+
+
+    def sleep_minutes(self, minutes):
+        current_time = datetime.datetime.now(timezone('Pacific/Auckland'))
+        eight_am = datetime.time(8, 0, 0, 0)
+        nine_pm = datetime.time(21, 0, 0, 0)
+
+        if (eight_am < current_time.time() < nine_pm):
+            time.sleep (minutes * 60)
+        else:
+            self.sleep_until_tomorrow()
 
 
     def run(self):
         while True:
             if not self.login():
-                # todo sleep for an hour
-                time.sleep(3600)
+                self.sleep_minutes(60)
                 continue
 
             if (self.get_account_balance < 25):
-                # todo sleep for a day
-                time.sleep(3600)
+                self.sleep_until_tomorrow()
                 continue
 
             self.make_orders()
-            # todo sleep as required
-
-            print("Success - exiting")
-            sys.exit()
+            self.sleep_minutes(5)
 
 
 def main():
