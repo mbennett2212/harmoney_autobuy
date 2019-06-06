@@ -156,7 +156,53 @@ class AutoBuyer:
 
 
     def buy_loan(self, loan):
-        pass
+        # First get the summary to get the X-CSRF-Token
+        response = requests.post(
+            'https://app.harmoney.com/api/v1/investor/order_batches/summary',
+            headers={
+                'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
+                'Accept': 'application/json',
+                'Referer': 'https://www.harmoney.co.nz/lender/portal/invest/marketplace/browse',
+                'content-type': 'application/json',
+                'Connection': 'keep-alive',
+                'Cookie': self.cookie,
+            },
+            data=json.dumps({
+                'orders': [{
+                    'id': loan.get('id'),
+                    'quantity': 1,
+                }]
+            }),
+        )
+
+        if (response.status_code != 201):
+            print ("Unexpected response code from summary request: {}".format(response.status_code))
+            return
+
+        csrf_token = r.headers.get('X-Csrf-Token')
+
+        response = requests.post(
+            'https://app.harmoney.com/api/v1/investor/order_batches',
+            headers={
+                'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
+                'Accept': 'application/json',
+                'Referer': 'https://www.harmoney.co.nz/lender/portal/invest/marketplace/current-order',
+                'content-type': 'application/json',
+                'Connection': 'keep-alive',
+                'Cookie': self.cookie,
+                'X-CSRF-Token': csrf_token,
+            },
+            data=json.dumps({
+                'orders': [{
+                    'id': loan.get('id'),
+                    'quantity': 1,
+                }]
+            }),
+        )
+
+        if (response.status_code != 201):
+            print ("Unexpected response code from order request: {}".format(response.status_code))
+            return
 
 
     def make_orders(self):
