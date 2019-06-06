@@ -90,7 +90,12 @@ class AutoBuyer:
 
 
     def get_account_info(self):
-        return self.send_get_request(
+        """ Return the account information for the user
+
+        Returns:
+        dict: The account details on success. Otherwise None.
+        """
+        response = self.send_get_request(
             url='https://app.harmoney.com/api/v1/investor/account',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
@@ -102,6 +107,11 @@ class AutoBuyer:
             },
             expected_code=200,
         )
+
+        if response is None:
+            return None
+
+        return response.json()
 
 
     def validate_account_info(self, info):
@@ -123,13 +133,13 @@ class AutoBuyer:
 
         self.set_cookie(response.cookies.get_dict().get('_harmoney_session_id'))
 
-        response = self.get_account_info()
-        if response is None:
+        account_details = self.get_account_info()
+        if account_details is None:
             self.logger.error("Failed to get account info")
             return False
 
 
-        if not self.validate_account_info(response.json()):
+        if not self.validate_account_info(account_details):
             self.logger.error("Account info did not validate")
             return False
 
