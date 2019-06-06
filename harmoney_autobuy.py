@@ -42,9 +42,8 @@ class AutoBuyer:
         expected_code (int): The expected status code from calling the API
 
         Returns:
-        requests.Response: The response returned from the API call if the returned
-                           status code matches the expected status code.
-                           Otherwise None.
+        dict: The response data returned from the API call if the returned
+              status code matches the expected status code. Otherwise None.
         """
         if self.cookie != 0:
             headers['Cookie'] = self.cookie
@@ -64,7 +63,7 @@ class AutoBuyer:
         if 'X-Csrf-Token' in response.headers:
             self.csrf_token = response.headers.get('X-Csrf-Token')
 
-        return response
+        return response.json()
 
 
     def set_cookie(self, cookie):
@@ -99,7 +98,7 @@ class AutoBuyer:
         Returns:
         dict: The account details on success. Otherwise None.
         """
-        response = self.send_get_request(
+        return self.send_get_request(
             url='https://app.harmoney.com/api/v1/investor/account',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
@@ -111,11 +110,6 @@ class AutoBuyer:
             },
             expected_code=200,
         )
-
-        if response is None:
-            return None
-
-        return response.json()
 
 
     def validate_account_info(self, info):
@@ -156,7 +150,7 @@ class AutoBuyer:
         Returns:
         int: The current account balance on success. Otherwise zero.
         """
-        response = self.send_get_request(
+        response_data = self.send_get_request(
             url='https://app.harmoney.com/api/v1/investor/funds',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
@@ -169,11 +163,11 @@ class AutoBuyer:
             expected_code=200,
         )
 
-        if response is None:
+        if response_data is None:
             self.logger.error("Failed to get account balance")
             return 0
 
-        return response.json().get('available_balance')
+        return response_data.get('available_balance')
 
 
     def get_available_loans(self):
@@ -182,7 +176,7 @@ class AutoBuyer:
         Returns:
         list: The list of available loans on success. Otherwise an empty list.
         """
-        response = self.send_get_request(
+        response_data = self.send_get_request(
             url='https://app.harmoney.com/api/v1/investor/marketplace/loans',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
@@ -195,11 +189,11 @@ class AutoBuyer:
             expected_code=200,
         )
 
-        if response is None:
+        if response_data is None:
             self.logger.error("Failed to get available loans")
             return []
 
-        return response.json().get('items')
+        return response_data.get('items')
 
 
     def have_not_invested_in_loan(self, loan):
