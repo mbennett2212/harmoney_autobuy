@@ -143,6 +143,8 @@ class AutoBuyer:
             self.logger.error("Failed to get available loans")
             return {}
 
+        # Store the X-CSRF-Token now, this is required when we make the API
+        # calls for buying loans
         self.csrf_token = response.headers.get('X-Csrf-Token')
 
         return response.json().get('items')
@@ -174,7 +176,6 @@ class AutoBuyer:
     def buy_loan(self, loan):
         self.logger.info("Buying loan: {}".format(loan.get('name')))
 
-        # First get the summary to get the X-CSRF-Token
         response = requests.post(
             'https://app.harmoney.com/api/v1/investor/order_batches/summary',
             headers={
