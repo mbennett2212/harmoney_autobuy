@@ -147,8 +147,13 @@ class AutoBuyer:
 
 
     def get_account_balance(self):
-        response = requests.get(
-            'https://app.harmoney.com/api/v1/investor/funds',
+        """ Return the current account balance
+
+        Returns:
+        int: The current account balance on success. Otherwise zero.
+        """
+        response = self.send_get_request(
+            url='https://app.harmoney.com/api/v1/investor/funds',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
                 'Accept': 'application/json, text/plain, */*',
@@ -156,11 +161,11 @@ class AutoBuyer:
                 'Referer': 'https://www.harmoney.co.nz/lender/',
                 'Origin': 'https://www.harmoney.co.nz',
                 'Connection': 'keep-alive',
-                'Cookie': self.cookie,
             },
+            expected_code=200,
         )
 
-        if (response.status_code != 200):
+        if response is None:
             self.logger.error("Failed to get account balance")
             return 0
 
