@@ -5,16 +5,29 @@ import getpass
 import sys
 import argparse
 import datetime
+import logging
 from pytz import timezone
+from logging.handlers import RotatingFileHandler
 
 
 class AutoBuyer:
-    def __init__(self, first_name, last_name, email, password):
+    def __init__(self, first_name, last_name, email, password, log_path):
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
         self.password = password
         self.cookie = '_harmoney_session_id=12616d4df15594f40882d9396c125b78'
+        self.init_logger(log_path)
+
+
+    def init_logger(self, log_path):
+        self.logger = logging.getLogger("Rotating Log")
+        self.logger.setLevel(logging.INFO)
+
+        handler = RotatingFileHandler(log_path, maxBytes=100000, backupCount=3)
+        formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
 
 
     def set_cookie(self, cookie):
@@ -73,18 +86,19 @@ class AutoBuyer:
     def login(self):
         response = self.send_login_request()
         if (response.status_code != 201):
-            print("Failed to login")
+            self.logger.error("Failed to login")
             return False
 
         self.set_cookie(response.cookies.get_dict().get('_harmoney_session_id'))
 
         response = self.get_account_info()
         if (response.status_code != 200):
-            print("Failed to get account info")
+            self.logger.error("Failed to get account info")
             return False
 
+
         if not self.validate_account_info(response.json()):
-            print("Account info did not validate")
+            self.logger.error("Account info did not validate")
             return False
 
         return True
@@ -105,7 +119,7 @@ class AutoBuyer:
         )
 
         if (response.status_code != 200):
-            print("Failed to get account balance")
+            self.logger.error("Failed to get account balance")
             return 0
 
         return response.json().get('available_balance')
@@ -126,7 +140,7 @@ class AutoBuyer:
         )
 
         if (response.status_code != 200):
-            print("Failed to get available loans")
+            self.logger.error("Failed to get available loans")
             return {}
 
         self.csrf_token = response.headers.get('X-Csrf-Token')
@@ -151,13 +165,15 @@ class AutoBuyer:
             return False
 
         if note_value != 25:
-            print ("Unexpected note value: {}".format(note_value))
+            self.logger.error("Unexpected note value: {}".format(note_value))
             return False
 
         return True
 
 
     def buy_loan(self, loan):
+        self.logger.info("Buying loan: {}".format(loan.get('name')))
+
         # First get the summary to get the X-CSRF-Token
         response = requests.post(
             'https://app.harmoney.com/api/v1/investor/order_batches/summary',
@@ -204,12 +220,13 @@ class AutoBuyer:
         )
 
         if (response.status_code != 201):
-            print ("Unexpected response code from order request: {}".format(response.status_code))
+            self.logger.error("Unexpected response code from order request: {}".format(response.status_code))
             return
 
 
     def make_orders(self):
         loans = self.get_available_loans()
+        self.logger.info("Found {} loans".format(len(loans)))
         for loan in loans:
             if (self.have_not_invested_in_loan(loan) and self.loan_is_acceptable(loan)):
                 self.buy_loan(loan)
@@ -226,7 +243,9 @@ class AutoBuyer:
 
         eight_am_tomorrow = eight_am_tomorrow.replace(hour=8, minute=0)
         diff = (eight_am_tomorrow - current_time).total_seconds()
+        self.logger.info("Sleeping for until tomorrow")
         time.sleep(abs(diff))
+        self.logger.info("Woke up")
 
 
     def sleep_minutes(self, minutes):
@@ -235,7 +254,9 @@ class AutoBuyer:
         nine_pm = datetime.time(21, 0, 0, 0)
 
         if (eight_am < current_time.time() < nine_pm):
+            self.logger.info("Sleeping for {} minutes".format(minutes))
             time.sleep (minutes * 60)
+            self.logger.info("Woke up")
         else:
             self.sleep_until_tomorrow()
 
@@ -259,10 +280,11 @@ def main():
     parser.add_argument('-f','--first_name', help='First name used to register the Harmoney account', required=True)
     parser.add_argument('-l','--last_name', help='Last name used to register the Harmoney account', required=True)
     parser.add_argument('-e','--email', help='Email address used to register the Harmoney account', required=True)
+    parser.add_argument('-p','--log_path', help='The path to the files to log messages to', required=True)
     args = parser.parse_args()
 
     password = getpass.getpass()
-    autobuyer = AutoBuyer(args.first_name, args.last_name, args.email, password)
+    autobuyer = AutoBuyer(args.first_name, args.last_name, args.email, password, args.log_path)
     autobuyer.run()
   
 if __name__== "__main__":
