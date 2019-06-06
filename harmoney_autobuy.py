@@ -17,6 +17,7 @@ class AutoBuyer:
         self.email = email
         self.password = password
         self.cookie = '_harmoney_session_id=12616d4df15594f40882d9396c125b78'
+        self.csrf_token = None
         self.init_logger(log_path)
 
 
@@ -59,6 +60,9 @@ class AutoBuyer:
 
         if 'Set-Cookie' in response.headers:
             self.cookie = response.headers.get('Set-Cookie')
+
+        if 'X-Csrf-Token' in response.headers:
+            self.csrf_token = response.headers.get('X-Csrf-Token')
 
         return response
 
@@ -173,8 +177,13 @@ class AutoBuyer:
 
 
     def get_available_loans(self):
-        response = requests.get(
-            'https://app.harmoney.com/api/v1/investor/marketplace/loans',
+        """ Get a list of currently available loans that can be purchased
+
+        Returns:
+        list: The list of available loans on success. Otherwise an empty list.
+        """
+        response = self.send_get_request(
+            url='https://app.harmoney.com/api/v1/investor/marketplace/loans',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
                 'Accept': 'application/json, text/plain, */*',
@@ -182,17 +191,13 @@ class AutoBuyer:
                 'Referer': 'https://www.harmoney.co.nz/lender/',
                 'Origin': 'https://www.harmoney.co.nz',
                 'Connection': 'keep-alive',
-                'Cookie': self.cookie,
             },
+            expected_code=200,
         )
 
-        if (response.status_code != 200):
+        if response is None:
             self.logger.error("Failed to get available loans")
-            return {}
-
-        # Store the X-CSRF-Token now, this is required when we make the API
-        # calls for buying loans
-        self.csrf_token = response.headers.get('X-Csrf-Token')
+            return []
 
         return response.json().get('items')
 
