@@ -129,6 +129,8 @@ class AutoBuyer:
             print("Failed to get available loans")
             return {}
 
+        self.csrf_token = response.headers.get('X-Csrf-Token')
+
         return response.json().get('items')
 
 
@@ -166,6 +168,7 @@ class AutoBuyer:
                 'content-type': 'application/json',
                 'Connection': 'keep-alive',
                 'Cookie': self.cookie,
+                'X-CSRF-Token': self.csrf_token,
             },
             data=json.dumps({
                 'orders': [{
@@ -175,11 +178,11 @@ class AutoBuyer:
             }),
         )
 
-        if (response.status_code != 201):
+        if (response.status_code != 200):
             print ("Unexpected response code from summary request: {}".format(response.status_code))
             return
 
-        csrf_token = r.headers.get('X-Csrf-Token')
+        self.csrf_token = response.headers.get('X-Csrf-Token')
 
         response = requests.post(
             'https://app.harmoney.com/api/v1/investor/order_batches',
@@ -190,7 +193,7 @@ class AutoBuyer:
                 'content-type': 'application/json',
                 'Connection': 'keep-alive',
                 'Cookie': self.cookie,
-                'X-CSRF-Token': csrf_token,
+                'X-CSRF-Token': self.csrf_token,
             },
             data=json.dumps({
                 'orders': [{
