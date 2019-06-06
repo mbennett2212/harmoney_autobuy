@@ -30,6 +30,39 @@ class AutoBuyer:
         self.logger.addHandler(handler)
 
 
+    def send_get_request(self, url, headers, expected_code):
+        """ Send a HTTP GET request to the Harmoney web API
+
+        This function handles setting the cookie in the request headers.
+
+        Parameters:
+        url (string): The URL to use with the GET request
+        headers (dict): The values to set in the request header
+        expected_code (int): The expected status code from calling the API
+
+        Returns:
+        requests.Response: The response returned from the API call if the returned
+                           status code matches the expected status code.
+                           Otherwise None.
+        """
+        if self.cookie != 0:
+            headers['Cookie'] = self.cookie
+
+        response = requests.get(
+            url,
+            headers=headers,
+        )
+
+        if response.status_code != expected_code:
+            self.logger.error("Get request failed. URL: {}".format(url))
+            return None
+
+        if 'Set-Cookie' in response.headers:
+            self.cookie = response.headers.get('Set-Cookie')
+
+        return response
+
+
     def set_cookie(self, cookie):
         self.cookie = '_harmoney_session_id={}'.format(cookie)
 
@@ -57,8 +90,8 @@ class AutoBuyer:
 
 
     def get_account_info(self):
-        response = requests.get(
-            'https://app.harmoney.com/api/v1/investor/account',
+        return self.send_get_request(
+            url='https://app.harmoney.com/api/v1/investor/account',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
                 'Accept': 'application/json, text/plain, */*',
@@ -66,10 +99,9 @@ class AutoBuyer:
                 'Referer': 'https://www.harmoney.co.nz/lender/',
                 'Origin': 'https://www.harmoney.co.nz',
                 'Connection': 'keep-alive',
-                'Cookie': self.cookie,
             },
+            expected_code=200,
         )
-        return response
 
 
     def validate_account_info(self, info):
@@ -92,7 +124,7 @@ class AutoBuyer:
         self.set_cookie(response.cookies.get_dict().get('_harmoney_session_id'))
 
         response = self.get_account_info()
-        if (response.status_code != 200):
+        if response is None:
             self.logger.error("Failed to get account info")
             return False
 
