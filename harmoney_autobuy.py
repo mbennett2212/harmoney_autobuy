@@ -77,8 +77,8 @@ class AutoBuyer:
         expected_code (int): The expected status code from calling the API
 
         Returns:
-        dict: The response data returned from the API call if the returned
-              status code matches the expected status code. Otherwise None.
+        bool: True if the if the returned status code matches the expected
+              status code. Otherwise False.
         """
         headers['Cookie'] = self.cookie
 
