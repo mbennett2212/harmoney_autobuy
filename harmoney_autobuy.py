@@ -45,8 +45,7 @@ class AutoBuyer:
         dict: The response data returned from the API call if the returned
               status code matches the expected status code. Otherwise None.
         """
-        if self.cookie != 0:
-            headers['Cookie'] = self.cookie
+        headers['Cookie'] = self.cookie
 
         response = requests.get(
             url,
@@ -54,7 +53,7 @@ class AutoBuyer:
         )
 
         if response.status_code != expected_code:
-            self.logger.error("Get request failed. URL: {}".format(url))
+            self.logger.error("GET request failed. URL: {}".format(url))
             return None
 
         if 'Set-Cookie' in response.headers:
@@ -66,30 +65,64 @@ class AutoBuyer:
         return response.json()
 
 
-    def set_cookie(self, cookie):
-        self.cookie = '_harmoney_session_id={}'.format(cookie)
+    def send_post_request(self, url, headers, data, expected_code):
+        """ Send a HTTP POST request to the Harmoney web API
+
+        This funciton handles setting the cookie in the request headers.
+
+        Parameters:
+        url (string): The URL to use with the POST request
+        headers (dict): The values to set in the request header
+        data (dict): The data to send in the request body
+        expected_code (int): The expected status code from calling the API
+
+        Returns:
+        dict: The response data returned from the API call if the returned
+              status code matches the expected status code. Otherwise None.
+        """
+        headers['Cookie'] = self.cookie
+
+        if self.csrf_token is not None:
+            headers['X-CSRF-Token'] = self.csrf_token
+
+        response = requests.post(
+            url,
+            headers=headers,
+            data=json.dumps(data)
+        )
+
+        if response.status_code != expected_code:
+            self.logger.error("POST request failed. URL: {}".format(url))
+            return False
+
+        if 'Set-Cookie' in response.headers:
+            self.cookie = response.headers.get('Set-Cookie')
+
+        if 'X-Csrf-Token' in response.headers:
+            self.csrf_token = response.headers.get('X-Csrf-Token')
+
+        return True
 
 
     def send_login_request(self):
-        response = requests.post(
-            'https://app.harmoney.com/accounts/sign_in',
+        return self.send_post_request(
+            url='https://app.harmoney.com/accounts/sign_in',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
                 'Accept': 'application/json',
                 'Referer': 'https://www.harmoney.co.nz/sign-in',
                 'content-type': 'application/json',
                 'Connection': 'keep-alive',
-                'Cookie': self.cookie,
             },
-            data=json.dumps({
+            data={
                 'branch': "NZ",
                 'account': {
                     'email': self.email,
                     'password': self.password,
-                }
-            }),
+                },
+            },
+            expected_code=201,
         )
-        return response
 
 
     def get_account_info(self):
@@ -124,18 +157,15 @@ class AutoBuyer:
 
 
     def login(self):
-        response = self.send_login_request()
-        if (response.status_code != 201):
+        logged_in = self.send_login_request()
+        if not logged_in:
             self.logger.error("Failed to login")
             return False
-
-        self.set_cookie(response.cookies.get_dict().get('_harmoney_session_id'))
 
         account_details = self.get_account_info()
         if account_details is None:
             self.logger.error("Failed to get account info")
             return False
-
 
         if not self.validate_account_info(account_details):
             self.logger.error("Account info did not validate")
