@@ -82,7 +82,7 @@ class AutoBuyer:
         expected_code (int): The expected status code from calling the API
 
         Returns:
-        bool: True if the the returned status code matches the expected
+        bool: True if the returned status code matches the expected
               status code. Otherwise False.
         """
         headers['Cookie'] = self.cookie
@@ -172,6 +172,13 @@ class AutoBuyer:
 
 
     def login(self):
+        """ Login to the Harmoney account.
+
+        Checks that the account logged into is the one expected.
+
+        Returns:
+        bool: True if the login was successful. Otherwise False.
+        """
         logged_in = self.send_login_request()
         if not logged_in:
             self.logger.error("Failed to login")
@@ -242,6 +249,14 @@ class AutoBuyer:
 
 
     def loan_is_acceptable(self, loan):
+        """ Checks whether the loan is of acceptable risk to buy.
+
+        Parameters:
+        loan (dict): The loan to check
+
+        Returns:
+        bool: True if the loan is of acceptable risk. Otherwise False.
+        """
         acceptable_grades = ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3"]
         grade = loan.get('grade')
         note_value = loan.get('note_value')
@@ -310,6 +325,8 @@ class AutoBuyer:
 
 
     def make_orders(self):
+        """ Buy any acceptable loans that are available.
+        """
         loans = self.get_available_loans()
         self.logger.info("Found {} loans".format(len(loans)))
         for loan in loans:
@@ -319,6 +336,8 @@ class AutoBuyer:
 
 
     def sleep_until_tomorrow(self):
+        """ Put the AutoBuyer to sleep until 8am tomorrow.
+        """
         current_time = datetime.datetime.now(timezone('Pacific/Auckland'))
         eight_am = datetime.time(8, 0, 0, 0)
 
@@ -329,12 +348,17 @@ class AutoBuyer:
 
         eight_am_tomorrow = eight_am_tomorrow.replace(hour=8, minute=0)
         diff = (eight_am_tomorrow - current_time).total_seconds()
-        self.logger.info("Sleeping for until tomorrow")
+        self.logger.info("Sleeping until tomorrow")
         time.sleep(abs(diff))
         self.logger.info("Woke up")
 
 
     def sleep_minutes(self, minutes):
+        """ Put the AutoBuyer to sleep for the given number of minutes.
+
+        Parameters:
+        minutes (int): The number of minutes to sleep for
+        """
         current_time = datetime.datetime.now(timezone('Pacific/Auckland'))
         eight_am = datetime.time(8, 0, 0, 0)
         nine_pm = datetime.time(21, 0, 0, 0)
@@ -348,6 +372,11 @@ class AutoBuyer:
 
 
     def run(self):
+        """ Start running the AutoBuyer.
+
+        Simply runs indefinitely periodically polling the Harmoney API and
+        making orders as required.
+        """
         while True:
             if not self.login():
                 self.sleep_minutes(60)
