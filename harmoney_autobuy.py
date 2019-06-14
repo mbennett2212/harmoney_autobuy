@@ -241,16 +241,13 @@ class AutoBuyer:
         return response_data.get('items')
 
 
-    def check_loan_grade(self, grade):
-        acceptable_grades = ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3"]
-        return grade in acceptable_grades
-
-
     def loan_is_acceptable(self, loan):
+        acceptable_grades = ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3"]
         grade = loan.get('grade')
         note_value = loan.get('note_value')
 
-        if not self.check_loan_grade(grade):
+        if grade not in acceptable_grades:
+            self.logger.info("Loan grade {} is not acceptable".format(grade))
             return False
 
         if note_value != 25:
