@@ -22,6 +22,11 @@ class AutoBuyer:
 
 
     def init_logger(self, log_path):
+        """ Initialise the logging functionality for the AutoBuyer
+
+        Parameters:
+        log_path (string): The path to the file to print logs to
+        """
         self.logger = logging.getLogger("Rotating Log")
         self.logger.setLevel(logging.INFO)
 
@@ -77,7 +82,7 @@ class AutoBuyer:
         expected_code (int): The expected status code from calling the API
 
         Returns:
-        bool: True if the if the returned status code matches the expected
+        bool: True if the the returned status code matches the expected
               status code. Otherwise False.
         """
         headers['Cookie'] = self.cookie
@@ -105,6 +110,11 @@ class AutoBuyer:
 
 
     def send_login_request(self):
+        """ Send the login request to the Harmoney web API
+
+        Returns:
+        bool: True if the login was successful. Otherwise False.
+        """
         return self.send_post_request(
             url='https://app.harmoney.com/accounts/sign_in',
             headers={
@@ -146,6 +156,11 @@ class AutoBuyer:
 
 
     def validate_account_info(self, info):
+        """ Validate that the account information is as expected.
+
+        Returns:
+        bool: True if the account information is as expected. Otherwise False.
+        """
         if (info.get('first_name') != self.first_name):
             return False
         if (info.get('last_name') != self.last_name):
