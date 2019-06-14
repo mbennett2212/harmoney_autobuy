@@ -241,10 +241,6 @@ class AutoBuyer:
         return response_data.get('items')
 
 
-    def have_not_invested_in_loan(self, loan):
-        return loan.get('already_invested_amount') == 0
-
-
     def check_loan_grade(self, grade):
         acceptable_grades = ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3"]
         return grade in acceptable_grades
@@ -320,7 +316,8 @@ class AutoBuyer:
         loans = self.get_available_loans()
         self.logger.info("Found {} loans".format(len(loans)))
         for loan in loans:
-            if (self.have_not_invested_in_loan(loan) and self.loan_is_acceptable(loan)):
+            have_not_invested_in_loan = (loan.get('already_invested_amount') == 0)
+            if (have_not_invested_in_loan and self.loan_is_acceptable(loan)):
                 self.buy_loan(loan)
 
 
