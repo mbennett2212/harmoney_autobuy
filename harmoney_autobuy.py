@@ -6,6 +6,7 @@ import sys
 import argparse
 import datetime
 import logging
+import os
 from pytz import timezone
 from logging.handlers import RotatingFileHandler
 
@@ -395,6 +396,11 @@ def main():
     args = parser.parse_args()
 
     password = getpass.getpass()
+
+    pid = os.fork()
+    if pid != 0:
+        return
+
     autobuyer = AutoBuyer(args.first_name, args.last_name, args.email, password, args.log_path)
     autobuyer.run()
   
