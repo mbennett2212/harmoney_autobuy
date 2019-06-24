@@ -275,52 +275,48 @@ class AutoBuyer:
     def buy_loan(self, loan):
         self.logger.info("Buying loan: {}".format(loan.get('name')))
 
-        response = requests.post(
-            'https://app.harmoney.com/api/v1/investor/order_batches/summary',
+        summary_request_successful = self.send_post_request(
+            url='https://app.harmoney.com/api/v1/investor/order_batches/summary',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
                 'Accept': 'application/json',
                 'Referer': 'https://www.harmoney.co.nz/lender/portal/invest/marketplace/browse',
                 'content-type': 'application/json',
                 'Connection': 'keep-alive',
-                'Cookie': self.cookie,
-                'X-CSRF-Token': self.csrf_token,
             },
-            data=json.dumps({
+            data={
                 'orders': [{
                     'id': loan.get('id'),
                     'quantity': 1,
                 }]
-            }),
+            },
+            expected_code=200,
         )
 
-        if (response.status_code != 200):
-            print ("Unexpected response code from summary request: {}".format(response.status_code))
+        if not summary_request_successful:
+            self.logger.error("Summary request failed")
             return
 
-        self.csrf_token = response.headers.get('X-Csrf-Token')
-
-        response = requests.post(
-            'https://app.harmoney.com/api/v1/investor/order_batches',
+        buy_was_successful = self.send_post_request(
+            url='https://app.harmoney.com/api/v1/investor/order_batches',
             headers={
                 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
                 'Accept': 'application/json',
                 'Referer': 'https://www.harmoney.co.nz/lender/portal/invest/marketplace/current-order',
                 'content-type': 'application/json',
                 'Connection': 'keep-alive',
-                'Cookie': self.cookie,
-                'X-CSRF-Token': self.csrf_token,
             },
-            data=json.dumps({
+            data={
                 'orders': [{
                     'id': loan.get('id'),
                     'quantity': 1,
                 }]
-            }),
+            },
+            expected_code=201,
         )
 
-        if (response.status_code != 201):
-            self.logger.error("Unexpected response code from order request: {}".format(response.status_code))
+        if not buy_was_successful:
+            self.logger.error("Buy request was unsuccessful: {}")
             return
 
 
