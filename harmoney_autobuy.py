@@ -379,7 +379,7 @@ class AutoBuyer:
                 self.sleep_minutes(60)
                 continue
 
-            if (self.get_account_balance < 25):
+            if (self.get_account_balance() < 25):
                 self.sleep_until_tomorrow()
                 continue
 
